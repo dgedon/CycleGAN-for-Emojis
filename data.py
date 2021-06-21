@@ -63,7 +63,7 @@ class EmojiDatamodule(Dataset):
 
         parser.add_argument('--img_size', type=int, default=32,
                             help='image size rescaling (default: 32)')
-        parser.add_argument('--batch_size', type=int, default=32,
+        parser.add_argument('--batch_size', type=int, default=16,
                             help='train batch size (default: 256)')
         parser.add_argument('--num_workers', type=int, default=0,
                             help='number of workers for dataloader (default: 4)')
