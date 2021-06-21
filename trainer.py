@@ -4,73 +4,116 @@ import torch.nn as nn
 import numpy as np
 from tqdm import tqdm
 import os
+import warnings
+warnings.filterwarnings("ignore")
 
 
 class CycleGANTrainer(nn.Module):
     def __init__(self, my_model, args):
-        super(CycleGANTrainer).__init__()
+        super().__init__()
         # save hyperparameters
         self.lr = args.lr
+        self.lambda_ = 1
 
         # save the model
-        self.discrim_x = my_model
-        """self.discrim_y = my_model[1]
-        self.gen_x = my_model[2]
-        self.gen_y = my_model[3]"""
+        self.disc_y2x = my_model['discriminator_x']
+        self.disc_x2y = my_model['discriminator_y']
+        self.gen_x = my_model['generator_x']
+        self.gen_y = my_model['generator_y']
 
         # optimizer
-        disc_param = self.discrim_x.parameters()
-        self.optimizer = torch.optim.Adam(disc_param, self.lr)
+        disc_param = list(self.disc_y2x.parameters()) + list(self.disc_x2y.parameters())
+        self.optimizer_disc = torch.optim.Adam(disc_param, self.lr)
+        gen_param = list(self.gen_x.parameters()) + list(self.gen_y.parameters())
+        self.optimizer_gen = torch.optim.Adam(gen_param, self.lr)
 
     def train_model(self, args, data_module, epoch):
         # set epoch
         self.epoch = epoch
         # Switch model to training mode.
-        self.model.train()
+        self.disc_y2x.train()
+        self.disc_x2y.train()
+        self.gen_x.train()
+        self.gen_y.train()
+
         # allocate
-        total_loss = 0
+        total_loss_disc = 0
+        total_loss_gen = 0
         n_entries = 0
+
+        # TODO: issue regarding epochs
         # get dataloaders
-        train_loader = data_module.train_dataloader()
+        train_loader_apple, train_loader_windows = data_module.train_dataloader(shuffle=True)
         # progress bar
-        pbar = tqdm(train_loader, desc='Training epoch {}'.format(self.run_iter, epoch), leave=False)
-
+        pbar = tqdm(zip(train_loader_apple, train_loader_windows),
+                    desc='Training epoch {}'.format(epoch),
+                    leave=False,
+                    total=min(len(train_loader_windows), len(train_loader_apple)))
         # training loop
-        for batch_idx, batch in enumerate(pbar):
+        for batch_idx, (batch_apple, batch_windows) in enumerate(pbar):
+            """
+            apple: x
+            windows: y
+            """
+            # TODO: save intermediate images
+
             # extract data from batch and put to device
-            traces, labels, ids, age_sex = batch
-            traces = traces.to(device=args.device)
-            labels = labels.to(device=args.device)
-            age_sex = age_sex.to(device=args.device)
+            img_x = batch_apple[0].to(args.device)
+            img_y = batch_windows[0].to(args.device)
 
+            ##### DISCRIMINATOR ######
             # Reinitialize grad
-            self.model.zero_grad()
-            # Forward pass
-            inp = traces, age_sex
-            logits = self.model(inp)
-            # loss function
-            train_loss = self.loss_fun(logits, labels)
+            self.optimizer_disc.zero_grad()
+            # loss disc real
+            loss_disc_real_x = ((self.disc_y2x(img_x).squeeze() - 1) ** 2).mean()
+            loss_disc_real_y = ((self.disc_x2y(img_y).squeeze() - 1) ** 2).mean()
+            # loss disc fake
+            loss_disc_fake_x = (self.disc_y2x(self.gen_x(img_y)) ** 2).mean()
+            loss_disc_fake_y = (self.disc_x2y(self.gen_y(img_x)) ** 2).mean()
+            # total discriminator loss
+            loss_disc = loss_disc_real_x + loss_disc_real_y + loss_disc_fake_x + loss_disc_fake_y
             # Backward pass
-            train_loss.backward()
+            loss_disc.backward()
             # Optimize
-            self.optimizer.step()
+            self.optimizer_disc.step()
 
-            # Update
-            total_loss += train_loss.detach().cpu().numpy()
-            bs = labels.size(0)
+            ##### Generator ######
+            # Reinitialize grad
+            self.optimizer_gen.zero_grad()
+            # loss gan
+            loss_gan_x = ((self.disc_y2x(self.gen_x(img_y)) - 1) ** 2).mean()
+            loss_gan_y = ((self.disc_x2y(self.gen_y(img_x)) - 1) ** 2).mean()
+            # loss cycle consistency
+            loss_cycle_x = torch.abs_(self.gen_x(self.gen_y(img_x)) - img_x).mean()
+            loss_cycle_y = torch.abs_(self.gen_y(self.gen_x(img_y)) - img_y).mean()
+            # total generator loss
+            loss_gen = loss_gan_x + loss_gan_y + self.lambda_ * (loss_cycle_x + loss_cycle_y)
+            # Backward pass
+            loss_gen.backward()
+            # Optimize
+            self.optimizer_gen.step()
+
+            # Update progress bar
+            bs = img_x.size(0)
             n_entries += bs
-            pbar.set_postfix({'loss': total_loss / n_entries})
+            total_loss_disc += loss_disc.detach().cpu().numpy()
+            total_loss_gen += loss_gen.detach().cpu().numpy()
+            pbar.set_postfix({
+                'disc_loss': total_loss_disc / n_entries,
+                'gen_loss': total_loss_gen / n_entries
+            })
 
-        # update schedule
-        self.scheduler.step()
-
-        # mean train loss
-        mean_train_loss = total_loss / n_entries
-        return mean_train_loss
+        return total_loss_disc / n_entries, total_loss_gen / n_entries
 
     def save_model(self, location, name):
+        model = {
+            'disc_x2y': self.disc_x2y.state_dict(),
+            'disc_y2x': self.disc_y2x.state_dict(),
+            'gen_x': self.gen_x.state_dict(),
+            'gen_y': self.gen_y.state_dict()
+        }
         torch.save({'epoch': self.epoch,
-                    'model': self.model.state_dict(),
+                    'model': [self.model.state_dict()],
                     },
                    os.path.join(location, name))
 

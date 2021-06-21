@@ -27,7 +27,7 @@ class EmojiDatamodule(Dataset):
         self.train_dataset_win = datasets.ImageFolder(train_path_win, transform)
         self.test_dataset_win = datasets.ImageFolder(test_path_win, transform)
 
-    def train_dataloader(self, shuffle=False):
+    def train_dataloader(self, shuffle=True):
         dl_apple = DataLoader(
             self.train_dataset_apple,
             batch_size=self.batch_size,
@@ -63,9 +63,9 @@ class EmojiDatamodule(Dataset):
 
         parser.add_argument('--img_size', type=int, default=32,
                             help='image size rescaling (default: 32)')
-        parser.add_argument('--batch_size', type=int, default=16,
+        parser.add_argument('--batch_size', type=int, default=32,
                             help='train batch size (default: 256)')
-        parser.add_argument('--num_workers', type=int, default=4,
+        parser.add_argument('--num_workers', type=int, default=0,
                             help='number of workers for dataloader (default: 4)')
 
         return parser

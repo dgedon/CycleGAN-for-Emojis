@@ -3,15 +3,16 @@ import torch.nn as nn
 
 
 def get_model(args):
+    my_dict = {}
     # discriminator
-    discriminator_x = Discriminator()
-    discriminator_y = Discriminator()
+    my_dict['discriminator_x'] = Discriminator()
+    my_dict['discriminator_y'] = Discriminator()
 
     # generators
-    generator_x = Generator()
-    generator_y = Generator()
+    my_dict['generator_x'] = Generator()
+    my_dict['generator_y'] = Generator()
 
-    return [discriminator_x, discriminator_y, generator_x, generator_y]
+    return my_dict
 
 
 class Generator(nn.Module):

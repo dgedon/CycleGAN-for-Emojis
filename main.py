@@ -9,7 +9,6 @@ from data import EmojiDatamodule
 from model import get_model
 from trainer import CycleGANTrainer
 
-
 if __name__ == '__main__':
     # argparser
     parser = argparse.ArgumentParser(add_help=False)
@@ -23,6 +22,8 @@ if __name__ == '__main__':
 
     # create logging folder
     log_dir = utils.set_log_dir()
+    # save the config file
+    utils.save_config(log_dir, args)
 
     # set seed
     utils.seed_everything(args.seed)
@@ -34,7 +35,7 @@ if __name__ == '__main__':
 
     # get dataloaders
     tqdm.write("Define dataloaders...")
-    data_module_windows = EmojiDatamodule(args)
+    data_module = EmojiDatamodule(args)
     tqdm.write("Done!\n")
 
     # load model
@@ -44,18 +45,28 @@ if __name__ == '__main__':
 
     # set up Trainer
     tqdm.write("Set up trainer...")
-    trainer = CycleGANTrainer(my_models[2], args)
+    trainer = CycleGANTrainer(my_models, args)
     tqdm.write("Done!\n")
 
     # training
+    # allocation
+    loss_disc_list = []
+    loss_gen_list = []
     tqdm.write("Start training.")
     for epoch in range(1, args.max_epochs + 1):
         # training epoch
-        train_loss = trainer.train_model(args, data_module, epoch)
+        loss_disc, loss_gen = trainer.train_model(args, data_module, epoch)
+
+        # save loss
+        loss_gen_list.append(loss_gen)
+        loss_disc_list.append(loss_disc)
 
     tqdm.write("Training Finished.\n")
     # save the last model
-    trainer.save_model(log_dir, 'model_last.pth')
+    #trainer.save_model(log_dir, 'model_last.pth')
+
+    # generate loss curve and save
+    utils.plot_loss(loss_gen_list, loss_disc_list, log_dir)
 
     # generate images on test data
-    #todo
+    # todo
