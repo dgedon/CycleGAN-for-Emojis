@@ -27,8 +27,8 @@ class CycleGANTrainer(nn.Module):
         # save the model
         self.disc_x = my_model['discriminator_x']
         self.disc_y = my_model['discriminator_y']
-        self.gen_y2x = my_model['generator_x']
-        self.gen_x2y = my_model['generator_y']
+        self.gen_y2x = my_model['generator_y2x']
+        self.gen_x2y = my_model['generator_x2y']
 
         # optimizer
         disc_param = list(self.disc_x.parameters()) + list(self.disc_y.parameters())
@@ -75,7 +75,7 @@ class CycleGANTrainer(nn.Module):
             loss_disc_fake_x = (self.disc_x(self.gen_y2x(img_y)) ** 2).mean()
             loss_disc_fake_y = (self.disc_y(self.gen_x2y(img_x)) ** 2).mean()
             # total discriminator loss
-            loss_disc = loss_disc_real_x + loss_disc_real_y + loss_disc_fake_x + loss_disc_fake_y
+            loss_disc = 0.5 * (loss_disc_real_x + loss_disc_real_y + loss_disc_fake_x + loss_disc_fake_y)
             # Backward pass
             loss_disc.backward()
             # Optimize

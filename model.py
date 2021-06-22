@@ -9,8 +9,8 @@ def get_model(args):
     my_dict['discriminator_y'] = Discriminator().to(args.device)
 
     # generators
-    my_dict['generator_x'] = Generator().to(args.device)
-    my_dict['generator_y'] = Generator().to(args.device)
+    my_dict['generator_y2x'] = Generator().to(args.device)
+    my_dict['generator_x2y'] = Generator().to(args.device)
 
     return my_dict
 
@@ -32,7 +32,8 @@ class Generator(nn.Module):
 
         # decoder
         self.deconv1 = deconv(in_channels=64, out_channels=32, kernel_size=self.kernel_size, stride=2, padding=1)
-        self.deconv2 = deconv(in_channels=32, out_channels=3, kernel_size=self.kernel_size, stride=2, padding=1)
+        self.deconv2 = deconv(in_channels=32, out_channels=3, kernel_size=self.kernel_size, stride=2, padding=1,
+                              use_bn=False)
 
         self.relu = torch.nn.ReLU()
         self.tanh = torch.nn.Tanh()
@@ -57,7 +58,7 @@ class Discriminator(nn.Module):
         self.conv1 = conv(in_channels=3, out_channels=32, kernel_size=self.kernel_size)
         self.conv2 = conv(in_channels=32, out_channels=64, kernel_size=self.kernel_size)
         self.conv3 = conv(in_channels=64, out_channels=128, kernel_size=self.kernel_size)
-        self.conv4 = conv(in_channels=128, out_channels=1, kernel_size=self.kernel_size, padding=0)
+        self.conv4 = conv(in_channels=128, out_channels=1, kernel_size=self.kernel_size, padding=0, use_bn=False)
 
         self.relu = torch.nn.ReLU()
         self.sigmoid = torch.nn.Sigmoid()
@@ -83,20 +84,28 @@ class ResnetBlock(nn.Module):
         return out
 
 
-def deconv(in_channels, out_channels, kernel_size, stride=2, padding=1):
+def deconv(in_channels, out_channels, kernel_size, stride=2, padding=1, use_bn=True):
     conv = nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding, bias=False)
-    bn = nn.BatchNorm2d(out_channels)
 
-    return nn.Sequential(conv, bn)
+    if use_bn:
+        bn = nn.BatchNorm2d(out_channels)
+        return nn.Sequential(conv, bn)
+    else:
+        return nn.Sequential(conv)
 
 
-def conv(in_channels, out_channels, kernel_size, stride=2, padding=1):
+def conv(in_channels, out_channels, kernel_size, stride=2, padding=1, use_bn=True, init_zero_weights=True):
     conv_layer = nn.Conv2d(in_channels=in_channels,
                            out_channels=out_channels,
                            kernel_size=kernel_size,
                            stride=stride,
                            padding=padding,
                            bias=False)
-    bn = nn.BatchNorm2d(out_channels)
+    if init_zero_weights:
+        conv_layer.weight.data = torch.randn(out_channels, in_channels, kernel_size, kernel_size) * 0.001
 
-    return nn.Sequential(conv_layer, bn)
+    if use_bn:
+        bn = nn.BatchNorm2d(out_channels)
+        return nn.Sequential(conv_layer, bn)
+    else:
+        return nn.Sequential(conv_layer)
