@@ -8,12 +8,15 @@ import utils
 from data import EmojiDatamodule
 from model import get_model
 from trainer import CycleGANTrainer
+from logger import CycleGANLogger
 
 if __name__ == '__main__':
     # argparser
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('--seed', type=int, default=42,
                         help='random seed for number generator (default: 42)')
+    parser.add_argument('--save_model', action='store_true',
+                        help='if activated, stores the last model')
 
     # get arguments from datamodule and trainer
     parser = EmojiDatamodule.add_model_specific_args(parser)
@@ -29,7 +32,7 @@ if __name__ == '__main__':
     utils.seed_everything(args.seed)
 
     # Set device
-    use_cuda = torch.cuda.is_available() and not args.no_cuda
+    use_cuda = torch.cuda.is_available()
     args.device = torch.device('cuda:0' if use_cuda else 'cpu')
     tqdm.write("Using {}!\n".format(args.device))
 
@@ -43,9 +46,14 @@ if __name__ == '__main__':
     my_models = get_model(args)
     tqdm.write('Done!\n')
 
+    # define logger
+    tqdm.write('Define logger...')
+    my_logger = CycleGANLogger(log_dir, args)
+    tqdm.write('Done!\n')
+
     # set up Trainer
     tqdm.write("Set up trainer...")
-    trainer = CycleGANTrainer(my_models, args)
+    trainer = CycleGANTrainer(my_models, my_logger, args)
     tqdm.write("Done!\n")
 
     # training
@@ -55,16 +63,21 @@ if __name__ == '__main__':
     tqdm.write("Start training.")
     for epoch in range(1, args.max_epochs + 1):
         # training epoch
-        loss_disc, loss_gen = trainer.train_model(args, data_module, epoch, log_dir)
+        loss_disc, loss_gen = trainer.train_model(data_module, epoch)
 
         # save loss
         loss_gen_list.append(loss_gen)
         loss_disc_list.append(loss_disc)
 
-    tqdm.write("Training Finished.\n")
-    # save the last model
-    #trainer.save_model(log_dir, 'model_last.pth')
+        # save the last model
+        if args.save_model and epoch == args.max_epochs + 1:
+            trainer.save_model(log_dir, 'model_last.pth')
+    tqdm.write("Training finished.\n")
 
     # generate loss curve and save
-    utils.plot_loss(loss_gen_list, loss_disc_list, log_dir)
+    my_logger.plot_loss(loss_gen_list, loss_disc_list)
 
+    # generate test images
+    tqdm.write("Start testing.")
+    trainer.test_model(data_module)
+    tqdm.write("Testing done.")

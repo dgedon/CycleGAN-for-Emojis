@@ -5,12 +5,12 @@ import torch.nn as nn
 def get_model(args):
     my_dict = {}
     # discriminator
-    my_dict['discriminator_x'] = Discriminator()
-    my_dict['discriminator_y'] = Discriminator()
+    my_dict['discriminator_x'] = Discriminator().to(args.device)
+    my_dict['discriminator_y'] = Discriminator().to(args.device)
 
     # generators
-    my_dict['generator_x'] = Generator()
-    my_dict['generator_y'] = Generator()
+    my_dict['generator_x'] = Generator().to(args.device)
+    my_dict['generator_y'] = Generator().to(args.device)
 
     return my_dict
 

@@ -8,6 +8,7 @@ class EmojiDatamodule(Dataset):
     def __init__(self, args):
         # save the hyperparameters
         self.batch_size = args.batch_size
+        self.test_batch_size = args.test_batch_size
         self.num_workers = args.num_workers
         self.img_size = args.img_size
 
@@ -45,13 +46,13 @@ class EmojiDatamodule(Dataset):
     def test_dataloader(self, shuffle=False):
         dl_apple = DataLoader(
             self.test_dataset_apple,
-            batch_size=self.batch_size,
+            batch_size=self.test_batch_size,
             shuffle=shuffle,
             num_workers=self.num_workers,
         )
         dl_windows = DataLoader(
             self.test_dataset_win,
-            batch_size=self.batch_size,
+            batch_size=self.test_batch_size,
             shuffle=shuffle,
             num_workers=self.num_workers,
         )
@@ -63,8 +64,10 @@ class EmojiDatamodule(Dataset):
 
         parser.add_argument('--img_size', type=int, default=32,
                             help='image size rescaling (default: 32)')
-        parser.add_argument('--batch_size', type=int, default=16,
-                            help='train batch size (default: 256)')
+        parser.add_argument('--batch_size', type=int, default=32,
+                            help='train batch size (default: 32)')
+        parser.add_argument('--test_batch_size', type=int, default=100,
+                            help='test batch size (default: 100)')
         parser.add_argument('--num_workers', type=int, default=0,
                             help='number of workers for dataloader (default: 4)')
 
