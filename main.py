@@ -55,7 +55,7 @@ if __name__ == '__main__':
     tqdm.write("Start training.")
     for epoch in range(1, args.max_epochs + 1):
         # training epoch
-        loss_disc, loss_gen = trainer.train_model(args, data_module, epoch)
+        loss_disc, loss_gen = trainer.train_model(args, data_module, epoch, log_dir)
 
         # save loss
         loss_gen_list.append(loss_gen)
@@ -68,5 +68,3 @@ if __name__ == '__main__':
     # generate loss curve and save
     utils.plot_loss(loss_gen_list, loss_disc_list, log_dir)
 
-    # generate images on test data
-    # todo

@@ -1,10 +1,10 @@
 from argparse import ArgumentParser
 import torch
 import torch.nn as nn
-import numpy as np
 from tqdm import tqdm
 import os
 import warnings
+import utils
 warnings.filterwarnings("ignore")
 
 
@@ -27,7 +27,7 @@ class CycleGANTrainer(nn.Module):
         gen_param = list(self.gen_x.parameters()) + list(self.gen_y.parameters())
         self.optimizer_gen = torch.optim.Adam(gen_param, self.lr)
 
-    def train_model(self, args, data_module, epoch):
+    def train_model(self, args, data_module, epoch, log_dir):
         # set epoch
         self.epoch = epoch
         # Switch model to training mode.
@@ -41,7 +41,6 @@ class CycleGANTrainer(nn.Module):
         total_loss_gen = 0
         n_entries = 0
 
-        # TODO: issue regarding epochs
         # get dataloaders
         train_loader_apple, train_loader_windows = data_module.train_dataloader(shuffle=True)
         # progress bar
@@ -49,13 +48,18 @@ class CycleGANTrainer(nn.Module):
                     desc='Training epoch {}'.format(epoch),
                     leave=False,
                     total=min(len(train_loader_windows), len(train_loader_apple)))
+
+        # Fixed test image to for sample visualization
+        test_loader_apple, test_loader_windows = data_module.test_dataloader()
+        test_X = next(iter(test_loader_apple))[0]
+        test_Y = next(iter(test_loader_windows))[0]
+
         # training loop
         for batch_idx, (batch_apple, batch_windows) in enumerate(pbar):
             """
             apple: x
             windows: y
             """
-            # TODO: save intermediate images
 
             # extract data from batch and put to device
             img_x = batch_apple[0].to(args.device)
@@ -103,6 +107,9 @@ class CycleGANTrainer(nn.Module):
                 'gen_loss': total_loss_gen / n_entries
             })
 
+        # Saves test image style transfer after each epoch
+        utils.save_samples(test_X, test_Y, self.gen_y, self.gen_x, log_dir, epoch, args)
+
         return total_loss_disc / n_entries, total_loss_gen / n_entries
 
     def save_model(self, location, name):
@@ -120,7 +127,7 @@ class CycleGANTrainer(nn.Module):
     @staticmethod
     def add_model_specific_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
-        parser.add_argument('--max_epochs', type=int, default=200,
+        parser.add_argument('--max_epochs', type=int, default=10,
                             help='maximum number of epochs (default: 10)')
         parser.add_argument('--lr', type=int, default=1e-3,  # TODO
                             help='learning rate (default: 1e-3)')
