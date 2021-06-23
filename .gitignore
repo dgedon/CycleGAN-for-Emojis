@@ -5,3 +5,4 @@ __pycache__*
 logs/
 server/
 pretrained/
+doc/WASP-GAN-project.zip

@@ -9,7 +9,6 @@ same setup as in assignment 4 of the course by Roger Grosse, see [here](http://w
 That means that we take the accompanying dataset, containing emojis from Apple and Windwos and try to transfer the style between them.
 The learnt transfer can be seen in the image below.
 
----
 ## Results
 
 The following restults are obtained after training for 220 epochs from scratch.
@@ -17,10 +16,9 @@ The following restults are obtained after training for 220 epochs from scratch.
 ![](doc/epoch220-app.png?raw=true)  
 *Transfer from Apple style emojis to Windows style ones*
 
-![](doc/epoch220-app.png?raw=true "Test")  
+![](doc/epoch220-win.png?raw=true "Test")  
 *Transfer from Windows style emojis to Windows style ones*
 
----
 ## Code Usage
 
 To run the code with standard settings use
